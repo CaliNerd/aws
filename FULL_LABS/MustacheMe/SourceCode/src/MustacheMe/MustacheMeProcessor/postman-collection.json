@@ -1,0 +1,35 @@
+{
+	"id": "7739bb54-b5af-9e9a-946a-8cf37a65caa9",
+	"name": "MustacheMe",
+	"description": "Collection for the MustacheMeProcessor microservice",
+	"order": [
+		"76526ce9-fe5c-f452-a578-7d9379520e7a"
+	],
+	"folders": [],
+	"timestamp": 1475853871805,
+	"owner": 0,
+	"public": false,
+	"published": false,
+	"requests": [
+		{
+			"id": "76526ce9-fe5c-f452-a578-7d9379520e7a",
+			"headers": "",
+			"url": "{{TEST_URL}}",
+			"pathVariables": {},
+			"preRequestScript": null,
+			"method": "GET",
+			"collectionId": "7739bb54-b5af-9e9a-946a-8cf37a65caa9",
+			"data": null,
+			"dataMode": "params",
+			"name": "MustacheMeProcessor",
+			"description": "",
+			"descriptionFormat": "html",
+			"time": 1475854660131,
+			"version": 2,
+			"responses": [],
+			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
+			"currentHelper": "normal",
+			"helperAttributes": {}
+		}
+	]
+}

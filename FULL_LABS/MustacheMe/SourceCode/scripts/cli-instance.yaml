@@ -1,0 +1,453 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Running Container-Enabled Microservices on AWS Bootcamp: Lab 1 - CLI
+  Instance CloudFormation Template '
+Mappings:
+  AWSRegionToAMI:
+    eu-west-1: {AMI: ami-d41d58a7}
+    us-east-1: {AMI: ami-c481fad3}
+    us-east-2: {AMI: ami-71ca9114}
+    us-west-2: {AMI: ami-b04e92d0}
+Outputs:
+  PublicDnsName:
+    Description: The public hostname of the CLI instance
+    Value:
+      Fn::GetAtt: [CliInstance, PublicDnsName]
+Parameters:
+  InstanceType:
+    AllowedValues: [t2.micro, t2.small, t2.medium]
+    ConstraintDescription: Must be a valid EC2 T2 instance type
+    Default: t2.medium
+    Description: CLI instance type
+    Type: String
+  KeyName: {Description: Name of an existing EC2 KeyPair to enable SSH access to the
+      EC2 instances, Type: 'AWS::EC2::KeyPair::KeyName'}
+  LabName:
+    AllowedValues: [lab-1-microservices, lab-2-pipeline, lab-3-scale, lab-4-security]
+    ConstraintDescription: Must be a valid lab name
+    Default: lab-1-microservices
+    Description: The name of the lab
+    Type: String
+  S3BucketName: {Description: Name of the S3 bucket where the source code is stored,
+    Type: String}
+  S3PathPrefix: {Description: S3 Path where source and scripts are found for the lab,
+    Type: String}
+  SourceCidr: {Default: 0.0.0.0/0, Description: Optional - CIDR/IP range for instance
+      outside access - defaults to 0.0.0.0/0, Type: String}
+  Subnet: {Description: The VPC subnet to launch the instance into, Type: 'AWS::EC2::Subnet::Id'}
+  VPC: {Description: The VPC where the instance will run, Type: 'AWS::EC2::VPC::Id'}
+Resources:
+  CliInstance:
+    CreationPolicy:
+      ResourceSignal: {Count: '1', Timeout: PT30M}
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          install_all: [install_cfn, install_logs, install_ssm, install_docker, install_docker_login_helper,
+            install_src, install_ecs_cli, install_docker_compose]
+        install_cfn:
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content:
+                Fn::Join:
+                - ''
+                - - '[main]
+
+                    '
+                  - stack=
+                  - {Ref: 'AWS::StackId'}
+                  - '
+
+                    '
+                  - region=
+                  - {Ref: 'AWS::Region'}
+                  - '
+
+                    '
+              group: root
+              mode: '000400'
+              owner: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content:
+                Fn::Join:
+                - ''
+                - - '[cfn-auto-reloader-hook]
+
+                    '
+                  - 'triggers=post.update
+
+                    '
+                  - 'path=Resources.CliInstance.Metadata.AWS::CloudFormation::Init
+
+                    '
+                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - '         --stack '
+                  - {Ref: 'AWS::StackName'}
+                  - '         --resource CliInstance '
+                  - '         --configsets install_all '
+                  - '         --region '
+                  - {Ref: 'AWS::Region'}
+                  - '
+
+                    '
+                  - 'runas=root
+
+                    '
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files: [/etc/cfn/cfn-hup.conf, /etc/cfn/hooks.d/cfn-auto-reloader.conf]
+        install_docker:
+          commands:
+            01_add_docker_user_group: {command: usermod -a -G docker ec2-user}
+            02_start_docker: {command: service docker start}
+          packages:
+            yum:
+              docker: []
+        install_docker_compose:
+          commands:
+            01_install_docker_compose: {command: 'sudo curl -L -o /usr/local/bin/docker-compose
+                https://github.com/docker/compose/releases/download/1.8.0/docker-compose-`uname
+                -s`-`uname -m`'}
+            02_set_docker_compose_permissions: {command: sudo chmod +x /usr/local/bin/docker-compose}
+        install_docker_login_helper:
+          commands:
+            01_change_owner: {command: 'chown -R ec2-user:ec2-user /var/lib/amazon-ecr-credential-helper
+                && chown -R ec2-user:ec2-user /home/ec2-user/.docker'}
+            02_build_ecr_credential_helper: {command: su - ec2-user -c "cd /var/lib/amazon-ecr-credential-helper
+                && make docker"}
+            03_move_credential_binary: {command: cp /var/lib/amazon-ecr-credential-helper/bin/local/docker-credential-ecr-login
+                /usr/local/bin/}
+          files:
+            /home/ec2-user/.docker/config.json:
+              content:
+                Fn::Join:
+                - ''
+                - ['{
+
+                    ', '"credsStore": "ecr-login"
+
+                    ', '}']
+              group: ec2-user
+              mode: '000644'
+              owner: ec2-user
+          sources: {/var/lib/amazon-ecr-credential-helper: 'https://github.com/awslabs/amazon-ecr-credential-helper/tarball/master'}
+        install_ecs_cli:
+          commands:
+            01_install_ecs_cli: {command: 'sudo curl -o /usr/local/bin/ecs-cli https://s3.amazonaws.com/amazon-ecs-cli/ecs-cli-linux-amd64-latest'}
+            02_set_ecs_cli_permissions: {command: sudo chmod +x /usr/local/bin/ecs-cli}
+        install_logs:
+          commands:
+            01_create_state_directory: {command: mkdir -p /var/awslogs/state}
+          files:
+            /etc/awslogs/awscli.conf:
+              content:
+                Fn::Join:
+                - ''
+                - - '[plugins]
+
+                    '
+                  - 'cwlogs = cwlogs
+
+                    '
+                  - '[default]
+
+                    '
+                  - 'region = '
+                  - {Ref: 'AWS::Region'}
+                  - '
+
+                    '
+              group: root
+              mode: '000444'
+              owner: root
+            /etc/awslogs/awslogs.conf:
+              content:
+                Fn::Join:
+                - ''
+                - - '[general]
+
+                    '
+                  - 'state_file = /var/awslogs/state/agent-state
+
+                    '
+                  - '[/var/log/messages]
+
+                    '
+                  - 'file = /var/log/messages
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: SysLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/syslog
+
+                    '
+                  - 'datetime_format = %b %d %H:%M:%S
+
+                    '
+                  - '[/var/log/cloud-init.log]
+
+                    '
+                  - 'file = /var/log/cloud-init.log
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: CloudformationLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/cloud-init.log
+
+                    '
+                  - "datetime_format = \n"
+                  - '[/var/log/cloud-init-output.log]
+
+                    '
+                  - 'file = /var/log/cloud-init-output.log
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: CloudformationLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/cloud-init-output.log
+
+                    '
+                  - "datetime_format = \n"
+                  - '[/var/log/cfn-init.log]
+
+                    '
+                  - 'file = /var/log/cfn-init.log
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: CloudformationLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/cfn-init.log
+
+                    '
+                  - "datetime_format = \n"
+                  - '[/var/log/cfn-init-cmd.log]
+
+                    '
+                  - 'file = /var/log/cfn-init-cmd.log
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: CloudformationLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/cfn-init-cmd.log
+
+                    '
+                  - "datetime_format = \n"
+                  - '[/var/log/cfn-hup.log]
+
+                    '
+                  - 'file = /var/log/cfn-hup.log
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: CloudformationLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/cfn-hup.log
+
+                    '
+                  - "datetime_format = \n"
+                  - '[/var/log/cfn-wire.log]
+
+                    '
+                  - 'file = /var/log/cfn-wire.log
+
+                    '
+                  - 'log_group_name = '
+                  - {Ref: CloudformationLogGroup}
+                  - '
+
+                    '
+                  - 'log_stream_name = {instance_id}/cfn-wire.log
+
+                    '
+                  - "datetime_format = \n"
+              group: root
+              mode: '000444'
+              owner: root
+          packages:
+            yum:
+              awslogs: []
+          services:
+            sysvinit:
+              awslogs:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files: [/etc/awslogs/awslogs.conf]
+        install_src:
+          commands:
+            01_change_owner:
+              command:
+                Fn::Join:
+                - ''
+                - - chown -R ec2-user:ec2-user /home/ec2-user/
+                  - {Ref: LabName}
+            02_chmod_files:
+              command:
+                Fn::Join:
+                - ''
+                - - find /home/ec2-user/
+                  - {Ref: LabName}
+                  - ' -type d -exec chmod 775 {} \; && find /home/ec2-user/'
+                  - {Ref: LabName}
+                  - ' -type f -exec chmod 664 {} \;'
+          files:
+            /home/ec2-user/.aws/config:
+              content:
+                Fn::Join:
+                - ''
+                - - '[default]
+
+                    '
+                  - region=
+                  - {Ref: 'AWS::Region'}
+                  - '
+
+                    '
+              group: ec2-user
+              mode: '000644'
+              owner: ec2-user
+          packages:
+            yum:
+              jq: []
+          sources:
+            /home/ec2-user:
+              Fn::Join:
+              - ''
+              - - https://
+                - {Ref: S3BucketName}
+                - .s3.amazonaws.com/
+                - {Ref: S3PathPrefix}
+                - binaries/
+                - {Ref: LabName}
+                - -src.tar.gz
+        install_ssm:
+          commands:
+            01_install_agent:
+              command:
+                Fn::Join:
+                - ''
+                - - curl https://amazon-ssm-
+                  - {Ref: 'AWS::Region'}
+                  - .s3.amazonaws.com/latest/linux_amd64/amazon-ssm-agent.rpm -o /tmp/amazon-ssm-agent.rpm
+                    && yum install -y /tmp/amazon-ssm-agent.rpm
+    Properties:
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvda
+        Ebs: {VolumeSize: '30', VolumeType: gp2}
+      IamInstanceProfile: {Ref: InstanceProfile}
+      ImageId:
+        Fn::FindInMap:
+        - AWSRegionToAMI
+        - {Ref: 'AWS::Region'}
+        - AMI
+      InstanceType: {Ref: InstanceType}
+      KeyName: {Ref: KeyName}
+      NetworkInterfaces:
+      - AssociatePublicIpAddress: 'true'
+        DeleteOnTermination: 'true'
+        DeviceIndex: '0'
+        GroupSet:
+        - {Ref: SecurityGroup}
+        SubnetId: {Ref: Subnet}
+      Tags:
+      - {Key: Name, Value: CLI Instance}
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+          - ''
+          - - '#!/bin/bash -ex
+
+              '
+            - 'yum -y update
+
+              '
+            - '# Install the files and packages from the metadata
+
+              '
+            - '/opt/aws/bin/cfn-init -v '
+            - '         --stack '
+            - {Ref: 'AWS::StackName'}
+            - '         --resource CliInstance '
+            - '         --configsets install_all '
+            - '         --region '
+            - {Ref: 'AWS::Region'}
+            - '
+
+              '
+            - '# Signal the status from cfn-init
+
+              '
+            - '/opt/aws/bin/cfn-signal -e $? '
+            - '         --stack '
+            - {Ref: 'AWS::StackName'}
+            - '         --resource CliInstance '
+            - '         --region '
+            - {Ref: 'AWS::Region'}
+            - '
+
+              '
+    Type: AWS::EC2::Instance
+  CloudformationLogGroup:
+    Properties: {RetentionInDays: 7}
+    Type: AWS::Logs::LogGroup
+  InstanceProfile:
+    Properties:
+      Path: /
+      Roles:
+      - {Ref: InstanceRole}
+    Type: AWS::IAM::InstanceProfile
+  InstanceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+        Version: '2012-10-17'
+      ManagedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role']
+      Path: /
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action: ['*']
+            Effect: Allow
+            Resource: ['*']
+          Version: '2012-10-17'
+        PolicyName: root
+    Type: AWS::IAM::Role
+  SecurityGroup:
+    Properties:
+      GroupDescription: CLI Security Group
+      SecurityGroupIngress:
+      - CidrIp: {Ref: SourceCidr}
+        FromPort: '22'
+        IpProtocol: tcp
+        ToPort: '22'
+      - CidrIp: {Ref: SourceCidr}
+        FromPort: '8000'
+        IpProtocol: tcp
+        ToPort: '9000'
+      VpcId: {Ref: VPC}
+    Type: AWS::EC2::SecurityGroup
+  SysLogGroup:
+    Properties: {RetentionInDays: 7}
+    Type: AWS::Logs::LogGroup

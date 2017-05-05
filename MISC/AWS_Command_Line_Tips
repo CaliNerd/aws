@@ -1,0 +1,24 @@
+##############################
+#
+#	AWS Command Line Tips:
+#
+##############################
+
+Create DynamoDB table:
+
+aws dynamodb create-table --table-name mustache --attribute-definitions AttributeName=imagekey,AttributeType=S --key-schema AttributeName=imagekey,KeyType=HASH --provisioned-throughput ReadCapacityUnits=10,WriteCapacityUnits=10
+
+
+Create an IAM ROLE:
+
+aws iam create-role --role-name mustache --assume-role-policy-document '{"Version": "2012-10-17","Statement": [{"Sid": "","Effect": "Allow","Principal": {"Service": "ecs-tasks.amazonaws.com"},"Action": "sts:AssumeRole"}]}'
+
+- Output of the ROLE creation command will include ROLE ARN (this can be used later)
+	ie: "arn:aws:iam::xxxxxxxxxxx:role/mustache"
+
+
+Attach policy to a ROLE (in this example, we are granting policy access to DynDB)
+
+EC2_AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+EC2_REGION="`echo \"$EC2_AVAIL_ZONE\" | sed -e 's:\([0-9][0-9]*\)[a-z]*\$:\\1:'`"
+aws iam put-role-policy --role-name mustache --policy-name Dynamo --policy-document "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:*\"],\"Resource\": \"arn:aws:dynamodb:$EC2_REGION:*:table/mustache\"}]}"

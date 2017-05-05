@@ -1,0 +1,11 @@
+[supervisord]
+nodaemon=true
+
+[program:nginx]
+command=/usr/sbin/nginx
+
+[program:uswgi]
+command=/var/www/forklift/venv/bin/uwsgi --ini /var/www/forklift/nginx/uwsgi.ini
+
+[program:stress]
+command=/usr/bin/stress --vm 1 --vm-bytes 384M --timeout 3m

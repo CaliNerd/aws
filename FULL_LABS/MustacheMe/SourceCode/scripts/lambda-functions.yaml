@@ -1,0 +1,62 @@
+Description: 'Running Container-Enabled Microservices on AWS Bootcamp: Lab 1 - Lambda
+  Functions CloudFormation Template'
+Outputs:
+  RunSsmCommandFunctionArn:
+    Export: {Name: RunSsmCommandFunctionArn}
+    Value:
+      Fn::GetAtt: [RunSsmCommandFunction, Arn]
+  RunSsmCommandFunctionName:
+    Export: {Name: RunSsmCommandFunctionName}
+    Value: {Ref: RunSsmCommandFunction}
+Parameters:
+  LabName:
+    AllowedValues: [lab-1-microservices, lab-2-pipeline, lab-3-scale, lab-4-security]
+    ConstraintDescription: must be a valid lab name.
+    Default: lab-2-pipeline
+    Description: The name of the lab
+    Type: String
+  S3BucketName: {Description: Name of the S3 bucket where the source code is stored.,
+    Type: String}
+  S3PathPrefix: {Description: S3 Path where source and scripts are found for the lab.,
+    Type: String}
+Resources:
+  RunSsmCommandFunction:
+    Properties:
+      Code:
+        S3Bucket: {Ref: S3BucketName}
+        S3Key: {'Fn::Sub': '${S3PathPrefix}binaries/lambda/RunSsmCommand.zip'}
+      Description: Runs a provided script on a Linux machine from the provided tag
+        name.
+      Handler: run_ssm_cmd.lambda_handler
+      MemorySize: '256'
+      Role:
+        Fn::GetAtt: [RunSsmCommandRole, Arn]
+      Runtime: python2.7
+      Timeout: '300'
+    Type: AWS::Lambda::Function
+  RunSsmCommandRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [lambda.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents',
+              'logs:DescribeLogStreams']
+            Effect: Allow
+            Resource: ['arn:aws:logs:*:*:*']
+          - Action: ['ec2:Describe*']
+            Effect: Allow
+            Resource: '*'
+          - Action: ['ssm:*']
+            Effect: Allow
+            Resource: '*'
+          Version: '2012-10-17'
+        PolicyName: root
+    Type: AWS::IAM::Role

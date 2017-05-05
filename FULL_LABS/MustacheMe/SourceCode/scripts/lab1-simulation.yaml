@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Running Container-Enabled Microservices on AWS: Lab 1 Simulation Template'
+Outputs:
+  CliInstanceDnsName:
+    Description: The public DNS name of the CLI instance.
+    Value:
+      Fn::GetAtt: [CliInstanceStack, Outputs.PublicDnsName]
+Parameters:
+  AdministratorPassword: {AllowedPattern: '[a-zA-Z0-9]*', MaxLength: '41', MinLength: '5',
+    NoEcho: 'true', Type: String}
+  CliInstanceType:
+    AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large]
+    ConstraintDescription: Must be a valid EC2 T2 instance type
+    Default: t2.small
+    Description: CLI instance type
+    Type: String
+  EcsInstanceType:
+    AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large]
+    ConstraintDescription: Must be a valid EC2 T2 instance type
+    Default: t2.small
+    Description: ECS instance type
+    Type: String
+  KeyName: {Description: Name of an existing EC2 KeyPair to enable SSH access to the
+      EC2 instances, Type: 'AWS::EC2::KeyPair::KeyName'}
+  LabName:
+    AllowedValues: [lab-1-microservices, lab-2-pipeline, lab-3-scale, lab-4-security]
+    ConstraintDescription: Must be a valid lab name
+    Default: lab-1-microservices
+    Description: The name of the lab
+    Type: String
+  S3BucketName: {Default: -aws-staging, Description: Name of the S3 bucket where the
+      lab resources are stored, Type: String}
+  S3PathPrefix: {Default: awsu-bootcamp/AWS-300-RCM/v3.0/, Description: The path prefix
+      where lab resources are stored (trailing slash required!), Type: String}
+  SourceCidr: {Default: 0.0.0.0/0, Description: Optional - CIDR/IP range for instance
+      outside access - defaults to 0.0.0.0/0, Type: String}
+Resources:
+  CliInstanceStack:
+    DependsOn: [NetworkStack]
+    Properties:
+      Parameters:
+        InstanceType: {Ref: CliInstanceType}
+        KeyName: {Ref: KeyName}
+        LabName: {Ref: LabName}
+        S3BucketName:
+          Fn::Join:
+          - ''
+          - - {Ref: 'AWS::Region'}
+            - {Ref: S3BucketName}
+        S3PathPrefix: {Ref: S3PathPrefix}
+        SourceCidr: {Ref: SourceCidr}
+        Subnet:
+          Fn::GetAtt: [NetworkStack, Outputs.PublicSubnet1]
+        VPC:
+          Fn::GetAtt: [NetworkStack, Outputs.VPC]
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/cli-instance.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack
+  EcsClusterStack:
+    DependsOn: [NetworkStack]
+    Properties:
+      Parameters:
+        InstanceType: {Ref: EcsInstanceType}
+        KeyName: {Ref: KeyName}
+        PublicSubnet1:
+          Fn::GetAtt: [NetworkStack, Outputs.PublicSubnet1]
+        PublicSubnet2:
+          Fn::GetAtt: [NetworkStack, Outputs.PublicSubnet2]
+        SourceCidr: {Ref: SourceCidr}
+        VPC:
+          Fn::GetAtt: [NetworkStack, Outputs.VPC]
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/ecs-cluster.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack
+  Lab1MicroservicesSimulationPart1:
+    DependsOn: [NetworkStack, LambdaStack, CliInstanceStack, EcsClusterStack]
+    Properties:
+      Commands: ['#!/bin/bash -e', 'echo "Starting simulation script: Part 1"', su
+          - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/forklift/ && docker
+          build -t forklift .', su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/forklift/
+          && docker run -d forklift', sleep 30, su - ec2-user -c 'for i in `docker
+          ps -a -q --filter ancestor=forklift`; do docker stop $i; done', echo "Script
+          completed successfully."]
+      Description: Simulate running through lab-1-microservices
+      Region: {Ref: 'AWS::Region'}
+      ServiceToken:
+        Fn::GetAtt: [LambdaStack, Outputs.RunSsmCommandFunctionArn]
+      TagName: CLI Instance
+      VPC:
+        Fn::GetAtt: [NetworkStack, Outputs.VPC]
+    Type: Custom::Simulation
+  Lab1MicroservicesSimulationPart2:
+    DependsOn: [Lab1MicroservicesSimulationPart1]
+    Properties:
+      Commands: ['#!/bin/bash -e', 'echo "Starting simulation script: Part 2"', 'su
+          - ec2-user -c ''cd ~/lab-1-microservices/src/MustacheMe/MustacheMeBase/
+          && docker build -t mustacheme:base .''', su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/
+          && docker-compose up -d', su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/
+          && docker-compose ps', su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/
+          && docker-compose down', echo "Script completed successfully."]
+      Description: Simulate running through lab-1-microservices
+      Region: {Ref: 'AWS::Region'}
+      ServiceToken:
+        Fn::GetAtt: [LambdaStack, Outputs.RunSsmCommandFunctionArn]
+      TagName: CLI Instance
+      VPC:
+        Fn::GetAtt: [NetworkStack, Outputs.VPC]
+    Type: Custom::Simulation
+  Lab1MicroservicesSimulationPart3:
+    DependsOn: [Lab1MicroservicesSimulationPart2]
+    Properties:
+      Commands:
+      - '#!/bin/bash -e'
+      - 'echo "Starting simulation script: Part 3"'
+      - su - ec2-user -c 'aws ecr create-repository --repository-name microservices_webserver
+        > /dev/null 2>&1 || echo skipping'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''docker tag mustacheme_webserver:latest '
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com/microservices_webserver:latest'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''docker push '
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com/microservices_webserver:latest'
+      - echo "Script completed successfully."
+      Description: Simulate running through lab-1-microservices
+      Region: {Ref: 'AWS::Region'}
+      ServiceToken:
+        Fn::GetAtt: [LambdaStack, Outputs.RunSsmCommandFunctionArn]
+      TagName: CLI Instance
+      VPC:
+        Fn::GetAtt: [NetworkStack, Outputs.VPC]
+    Type: Custom::Simulation
+  Lab1MicroservicesSimulationPart4:
+    DependsOn: [Lab1MicroservicesSimulationPart3]
+    Properties:
+      Commands:
+      - '#!/bin/bash -e'
+      - 'echo "Starting simulation script: Part 4"'
+      - su - ec2-user -c 'aws ecr create-repository --repository-name microservices_processor
+        > /dev/null 2>&1 || echo skipping'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''docker tag mustacheme_processor:latest '
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com/microservices_processor:latest'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''docker push '
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com/microservices_processor:latest'
+      - echo "Script completed successfully."
+      Description: Simulate running through lab-1-microservices
+      Region: {Ref: 'AWS::Region'}
+      ServiceToken:
+        Fn::GetAtt: [LambdaStack, Outputs.RunSsmCommandFunctionArn]
+      TagName: CLI Instance
+      VPC:
+        Fn::GetAtt: [NetworkStack, Outputs.VPC]
+    Type: Custom::Simulation
+  Lab1MicroservicesSimulationPart5:
+    DependsOn: [Lab1MicroservicesSimulationPart4]
+    Properties:
+      Commands:
+      - '#!/bin/bash -e'
+      - 'echo "Starting simulation script: Part 5"'
+      - su - ec2-user -c 'aws ecr create-repository --repository-name microservices_info
+        > /dev/null 2>&1 || echo skipping'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''docker tag mustacheme_info:latest '
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com/microservices_info:latest'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''docker push '
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com/microservices_info:latest'
+      - echo "Script completed successfully."
+      Description: Simulate running through lab-1-microservices
+      Region: {Ref: 'AWS::Region'}
+      ServiceToken:
+        Fn::GetAtt: [LambdaStack, Outputs.RunSsmCommandFunctionArn]
+      TagName: CLI Instance
+      VPC:
+        Fn::GetAtt: [NetworkStack, Outputs.VPC]
+    Type: Custom::Simulation
+  Lab1MicroservicesSimulationPart6:
+    DependsOn: [Lab1MicroservicesSimulationPart5]
+    Properties:
+      Commands:
+      - '#!/bin/bash -e'
+      - 'echo "Starting simulation script: Part 6"'
+      - Fn::Join:
+        - ''
+        - - 'su - ec2-user -c ''ecs-cli configure --region '
+          - {Ref: 'AWS::Region'}
+          - ' --cluster '
+          - Fn::GetAtt: [EcsClusterStack, Outputs.BootcampCluster]
+          - ''''
+      - su - ec2-user -c 'ecs-cli ps'
+      - su - ec2-user -c 'sed -i s/processoring/processor/g ~/lab-1-microservices/src/MustacheMe/ecs-cli/docker-compose.yml'
+      - su - ec2-user -c 'sed -i s/information/info/g ~/lab-1-microservices/src/MustacheMe/ecs-cli/docker-compose.yml'
+      - Fn::Join:
+        - ''
+        - - su - ec2-user -c 'sed -i s/\<REPO\>\\/microservices_webserver/
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com\\/microservices_webserver:latest/g ~/lab-1-microservices/src/MustacheMe/ecs-cli/docker-compose.yml'
+      - Fn::Join:
+        - ''
+        - - su - ec2-user -c 'sed -i s/\<REPO\>\\/microservices_processor/
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com\\/microservices_processor:latest/g ~/lab-1-microservices/src/MustacheMe/ecs-cli/docker-compose.yml'
+      - Fn::Join:
+        - ''
+        - - su - ec2-user -c 'sed -i s/\<REPO\>\\/microservices_info/
+          - {Ref: 'AWS::AccountId'}
+          - .dkr.ecr.
+          - {Ref: 'AWS::Region'}
+          - .amazonaws.com\\/microservices_info:latest/g ~/lab-1-microservices/src/MustacheMe/ecs-cli/docker-compose.yml'
+      - su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/ecs-cli && ecs-cli
+        compose up'
+      - su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/ecs-cli && ecs-cli
+        ps'
+      - su - ec2-user -c 'cd ~/lab-1-microservices/src/MustacheMe/ecs-cli && ecs-cli
+        compose down'
+      - echo "Script completed successfully."
+      Description: Simulate running through lab-1-microservices
+      Region: {Ref: 'AWS::Region'}
+      ServiceToken:
+        Fn::GetAtt: [LambdaStack, Outputs.RunSsmCommandFunctionArn]
+      TagName: CLI Instance
+      VPC:
+        Fn::GetAtt: [NetworkStack, Outputs.VPC]
+    Type: Custom::Simulation
+  LambdaStack:
+    Properties:
+      Parameters:
+        LabName: {Ref: LabName}
+        S3BucketName:
+          Fn::Join:
+          - ''
+          - - {Ref: 'AWS::Region'}
+            - {Ref: S3BucketName}
+        S3PathPrefix: {Ref: S3PathPrefix}
+      Tags:
+      - {Key: StackType, Value: Lambda}
+      - Key: LabName
+        Value: {Ref: LabName}
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/lambda-functions.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack
+  NetworkStack:
+    Properties:
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/network.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack

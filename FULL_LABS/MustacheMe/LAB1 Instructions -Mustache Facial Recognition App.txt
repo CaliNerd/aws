@@ -1,0 +1,73 @@
+########################
+#
+#	LAB 1 Instructions:
+#
+########################
+
+# Lab 1.1 (Building the entire app within 1 big docker container)
+
+-SSH into box
+
+cd lab-1-microservices/src/MustacheMe/forklift
+	(The docker config file is located @ cd lab-1-microservices/src/MustacheMe/forklift)
+
+docker build -t forklift .
+
+docker run -dp 8000:8000 forklift
+
+-test website http://<endpoint DNS Name>:8000
+
+-To stop the docker run: docker stop $(docker ps -lq)
+
+############################################################################
+
+# Lab 1.2 (Divide the docker app into 3 containers: web server, info server, img processing server)
+
+cd ~/lab-1-microservices/src/MustacheMe/MustacheMeBase/
+
+docker build -t mustacheme:base .
+
+cd ~/lab-1-microservices/src/MustacheMe/
+
+docker-compose up -d
+
+docker-compose ps
+	(This will show you the 3 unique docker containers running)
+
+docker-compose down
+	(To shutdown)
+
+############################################################################
+
+# Lab 1.3 (Pushing images to EC2 Container Registry 'ECR')
+
+AWS Console > Services > EC2 Container Services
+	-Create Repository
+	-name is microservices_webserver
+	-next > done
+	-Save the 'Repository URI'
+
+SSH into box (do the following on the VM)
+
+docker tag mustacheme_webserver <Repository URL>:latest
+
+docker push <Repository URL>:latest
+
+aws ecr create-repository --repository-name microservices_processor
+
+docker tag mustacheme_processor <Repository URL>:latest
+
+docker push <Repository URL>:latest
+
+aws ecr create-repository --repository-name microservices_info
+
+docker tag mustacheme_info <Repository URL>:latest
+
+docker push <Repository URL>:latest
+
+
+
+
+
+
+

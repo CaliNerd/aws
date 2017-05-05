@@ -1,0 +1,35 @@
+{
+	"id": "7739bb54-b5af-9e9a-946a-8cf37a65caa9",
+	"name": "MustacheMe",
+	"description": "Collection for the MustacheMeInfo microservice",
+	"order": [
+		"ce08e91b-bd62-33e0-7c77-20143214a185"
+	],
+	"folders": [],
+	"timestamp": 1475853871805,
+	"owner": 0,
+	"public": false,
+	"published": false,
+	"requests": [
+		{
+			"id": "ce08e91b-bd62-33e0-7c77-20143214a185",
+			"headers": "",
+			"url": "{{TEST_URL}}/infos/instance",
+			"pathVariables": {},
+			"preRequestScript": null,
+			"method": "GET",
+			"collectionId": "7739bb54-b5af-9e9a-946a-8cf37a65caa9",
+			"data": null,
+			"dataMode": "params",
+			"name": "MustacheMeInfo",
+			"description": "Tests the MustacheMeInfo microservice",
+			"descriptionFormat": "html",
+			"time": 1475854249253,
+			"version": 2,
+			"responses": [],
+			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Body matches string\"] = responseBody.has(\"instance\");\n\nvar jsonData = JSON.parse(responseBody);\ntests[\"Contains instance JSON value\"] = jsonData.instance.startsWith('i-')\n",
+			"currentHelper": "normal",
+			"helperAttributes": {}
+		}
+	]
+}

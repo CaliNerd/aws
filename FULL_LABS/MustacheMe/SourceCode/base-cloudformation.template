@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Running Container-Enabled Microservices on AWS: Lab 1 Base CloudFormation
+  Template '
+Outputs:
+  CliInstanceDnsName:
+    Description: The public DNS name of the CLI instance.
+    Value:
+      Fn::GetAtt: [CliInstanceStack, Outputs.PublicDnsName]
+  EcsClusterName:
+    Description: The name of the ECS cluster.
+    Value:
+      Fn::GetAtt: [EcsClusterStack, Outputs.BootcampCluster]
+Parameters:
+  AdministratorPassword: {AllowedPattern: '[a-zA-Z0-9]*', MaxLength: '41', MinLength: '5',
+    NoEcho: 'true', Type: String}
+  CliInstanceType:
+    AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large]
+    ConstraintDescription: Must be a valid EC2 T2 instance type
+    Default: t2.small
+    Description: CLI instance type
+    Type: String
+  EcsInstanceType:
+    AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large]
+    ConstraintDescription: Must be a valid EC2 T2 instance type
+    Default: t2.small
+    Description: ECS instance type
+    Type: String
+  KeyName: {Description: Name of an existing EC2 KeyPair to enable SSH access to the
+      EC2 instances, Type: 'AWS::EC2::KeyPair::KeyName'}
+  LabName:
+    AllowedValues: [lab-1-microservices, lab-2-pipeline, lab-3-scale, lab-4-security]
+    ConstraintDescription: Must be a valid lab name
+    Default: lab-1-microservices
+    Description: The name of the lab
+    Type: String
+  S3BucketName: {Default: -aws-staging, Description: Name of the S3 bucket
+      where the lab resources are stored, Type: String}
+  S3PathPrefix: {Default: awsu-bootcamp/AWS-300-RCM/v3.0/, Description: The path prefix
+      where lab resources are stored (trailing slash required!), Type: String}
+  SourceCidr: {Default: 0.0.0.0/0, Description: Optional - CIDR/IP range for instance
+      outside access - defaults to 0.0.0.0/0, Type: String}
+Resources:
+  CliInstanceStack:
+    DependsOn: [NetworkStack]
+    Properties:
+      Parameters:
+        InstanceType: {Ref: CliInstanceType}
+        KeyName: {Ref: KeyName}
+        LabName: {Ref: LabName}
+        S3BucketName:
+          Fn::Join:
+          - ''
+          - - {Ref: 'AWS::Region'}
+            - {Ref: S3BucketName}
+        S3PathPrefix: {Ref: S3PathPrefix}
+        SourceCidr: {Ref: SourceCidr}
+        Subnet:
+          Fn::GetAtt: [NetworkStack, Outputs.PublicSubnet1]
+        VPC:
+          Fn::GetAtt: [NetworkStack, Outputs.VPC]
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/cli-instance.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack
+  EcsClusterStack:
+    DependsOn: [NetworkStack]
+    Properties:
+      Parameters:
+        InstanceType: {Ref: EcsInstanceType}
+        KeyName: {Ref: KeyName}
+        PublicSubnet1:
+          Fn::GetAtt: [NetworkStack, Outputs.PublicSubnet1]
+        PublicSubnet2:
+          Fn::GetAtt: [NetworkStack, Outputs.PublicSubnet2]
+        SourceCidr: {Ref: SourceCidr}
+        VPC:
+          Fn::GetAtt: [NetworkStack, Outputs.VPC]
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/ecs-cluster.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack
+  NetworkStack:
+    Properties:
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - https://
+          - {Ref: 'AWS::Region'}
+          - {Ref: S3BucketName}
+          - .s3.amazonaws.com/
+          - {Ref: S3PathPrefix}
+          - {Ref: LabName}
+          - /scripts/network.yaml
+      TimeoutInMinutes: '10'
+    Type: AWS::CloudFormation::Stack

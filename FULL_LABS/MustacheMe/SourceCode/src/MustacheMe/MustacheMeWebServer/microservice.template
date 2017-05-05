@@ -1,0 +1,117 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Running Container-Enabled Microservices on AWS Bootcamp: MustacheMeWebServer microservice CloudFormation Template",
+  "Parameters": {
+    "ECSCluster": {
+      "Type": "String",
+      "Description": "The name of the ECS cluster to deploy the service to",
+      "Default": "default"
+    },
+    "ImageTag": {
+      "Type": "String",
+      "Description": "The docker image version",
+      "Default": "{DOCKER_IMAGE_TAG}"
+    },
+    "ALBDnsName": {
+      "Type": "String",
+      "Description": "The DNS Name of the Application Load Balancer"
+    },
+    "TargetGroupArn": {
+      "Type": "String",
+      "Description": "The ARN of the Application Load Balancer target group",
+      "Default": ""
+    },
+    "ECSServiceRole": {
+      "Type": "String",
+      "Description": "The ARN of the ECS service role",
+      "Default": ""
+    },
+    "ApplicationAutoScalingRoleArn": {
+      "Type": "String",
+      "Description": "The ARN of the Application Auto Scaling Role",
+      "Default": ""
+    }
+  },
+  "Resources": {
+    "MustacheMeWebServerLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "RetentionInDays": 7
+      }
+    },
+    "TaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [{
+          "Name": "MustacheMeWebServer",
+          "Cpu": "512",
+          "Essential": "true",
+          "Image": {
+            "Fn::Join": ["", [{
+              "Ref": "AWS::AccountId"
+            }, ".dkr.ecr.", {
+              "Ref": "AWS::Region"
+            }, ".amazonaws.com/mustachemewebserver:", {
+              "Ref": "ImageTag"
+            }]]
+          },
+          "Memory": "512",
+          "PortMappings": [{
+            "HostPort": "0",
+            "ContainerPort": "8000"
+          }],
+          "Environment": [{
+            "Name": "ALBDNSNAME",
+            "Value": {
+              "Ref": "ALBDnsName"
+            }
+          }],
+          "Command": [
+            "sh", "-c", "envsubst '$ALBDNSNAME' < /var/www/forklift/nginx/nginx.conf.template > /etc/nginx/conf.d/nginx.conf && /usr/sbin/nginx"
+          ],
+          "LogConfiguration": {
+            "LogDriver": "awslogs",
+            "Options": {
+              "awslogs-group": {
+                "Ref": "MustacheMeWebServerLogGroup"
+              },
+              "awslogs-region": {
+                "Ref": "AWS::Region"
+              }
+            }
+          }
+        }]
+      }
+    },
+    "Service": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": {
+          "Ref": "ECSCluster"
+        },
+        "DesiredCount": "1",
+        "TaskDefinition": {
+          "Ref": "TaskDefinition"
+        },
+        "LoadBalancers": [{
+          "ContainerName": "MustacheMeWebServer",
+          "ContainerPort": "8000",
+          "TargetGroupArn": {
+            "Ref": "TargetGroupArn"
+          }
+        }],
+        "Role": {
+          "Ref": "ECSServiceRole"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "Service": {
+      "Description": "The ECS service created",
+      "Value": {
+        "Ref": "Service"
+      }
+    }
+  }
+}

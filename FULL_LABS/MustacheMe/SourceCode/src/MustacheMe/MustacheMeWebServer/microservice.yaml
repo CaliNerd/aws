@@ -1,0 +1,64 @@
+Description: "Running Container-Enabled Microservices on AWS Bootcamp: MustacheMeWebServer microservice CloudFormation Template"
+
+Parameters:
+  ImageTag:
+    Type: "String"
+    Description: "The docker image version"
+    MinLength: "3"
+    MaxLength: "5"
+    AllowedPattern: "^v_[0-9]*"
+
+  TargetGroupArn:
+    Type: "String"
+    Description: "The ARN of the ALB microservice target group"
+
+Resources:
+  MustacheMeWebServerLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      RetentionInDays: 7
+
+  MustacheMeWebServerTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      ContainerDefinitions:
+        -
+          Name: "MustacheMeWebServer"
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/mustachemewebserver:${ImageTag}
+          Cpu: 512
+          Memory: 512
+          Essential: true
+          Environment:
+            -
+              Name: ALBDNSNAME
+              Value: !ImportValue ALBDnsName
+          Command:
+            - sh
+            - -c
+            - envsubst '$ALBDNSNAME' < /var/www/forklift/nginx/nginx.conf.template > /etc/nginx/conf.d/nginx.conf && /usr/sbin/nginx
+          LogConfiguration:
+            LogDriver: "awslogs"
+            Options:
+              awslogs-group: !Ref MustacheMeWebServerLogGroup
+              awslogs-region: !Ref "AWS::Region"
+          PortMappings:
+            -
+              ContainerPort: "8000"
+              HostPort: "0"
+              Protocol: "tcp"
+
+  MustacheMeWebServerService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      Cluster: !ImportValue EcsClusterName
+      DesiredCount: "1"
+      Role: !ImportValue ECSServiceRoleArn
+      TaskDefinition: !Ref MustacheMeWebServerTaskDefinition
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      LoadBalancers:
+        -
+          ContainerName: "MustacheMeWebServer"
+          ContainerPort: "8000"
+          TargetGroupArn: !Ref TargetGroupArn

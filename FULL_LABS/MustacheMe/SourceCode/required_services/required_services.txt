@@ -1,0 +1,9 @@
+AWS::AutoScaling
+AWS::CloudFormation
+AWS::EC2
+AWS::ECR
+AWS::ECS
+AWS::IAM
+AWS::Lambda
+AWS::Logs
+AWS::SSM

@@ -1,0 +1,1 @@
+for folder in `aws s3 ls | awk '{print $2}' | cut -d '/' -f 1` ; do echo "$folder"; aws s3 ls ; done

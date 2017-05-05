@@ -1,0 +1,56 @@
+Description: "Running Container-Enabled Microservices on AWS Bootcamp: MustacheMeInfo microservice CloudFormation Template"
+
+Parameters:
+  ImageTag:
+    Type: "String"
+    Description: "The docker image version"
+    MinLength: "3"
+    MaxLength: "5"
+    AllowedPattern: "^v_[0-9]*"
+
+  TargetGroupArn:
+    Type: "String"
+    Description: "The ARN of the ALB microservice target group"
+
+Resources:
+  MustacheMeInfoLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      RetentionInDays: 7
+
+  MustacheMeInfoTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      ContainerDefinitions:
+        -
+          Name: "MustacheMeInfo"
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/mustachemeinfo:${ImageTag}
+          Cpu: 512
+          Memory: 512
+          Essential: true
+          LogConfiguration:
+            LogDriver: "awslogs"
+            Options:
+              awslogs-group: !Ref MustacheMeInfoLogGroup
+              awslogs-region: !Ref "AWS::Region"
+          PortMappings:
+            -
+              ContainerPort: "8092"
+              HostPort: "0"
+              Protocol: "tcp"
+
+  MustacheMeInfoService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      Cluster: !ImportValue EcsClusterName
+      DesiredCount: "1"
+      Role: !ImportValue ECSServiceRoleArn
+      TaskDefinition: !Ref MustacheMeInfoTaskDefinition
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      LoadBalancers:
+        -
+          ContainerName: "MustacheMeInfo"
+          ContainerPort: "8092"
+          TargetGroupArn: !Ref TargetGroupArn

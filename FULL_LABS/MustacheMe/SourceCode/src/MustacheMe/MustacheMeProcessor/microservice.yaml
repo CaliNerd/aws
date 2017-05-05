@@ -1,0 +1,60 @@
+Description: "Running Container-Enabled Microservices on AWS Bootcamp: MustacheMeProcessor microservice CloudFormation Template"
+
+Parameters:
+  ImageTag:
+    Type: "String"
+    Description: "The docker image version"
+    MinLength: "3"
+    MaxLength: "5"
+    AllowedPattern: "^v_[0-9]*"
+
+  TargetGroupArn:
+    Type: "String"
+    Description: "The ARN of the ALB microservice target group"
+
+Resources:
+  MustacheMeProcessorLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      RetentionInDays: 7
+
+  MustacheMeProcessorTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      ContainerDefinitions:
+        -
+          Name: "MustacheMeProcessor"
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/mustachemeprocessor:${ImageTag}
+          Cpu: 512
+          Memory: 512
+          Essential: true
+          Environment:
+            -
+              Name: AWS_DEFAULT_REGION
+              Value: !Ref "AWS::Region"
+          LogConfiguration:
+            LogDriver: "awslogs"
+            Options:
+              awslogs-group: !Ref MustacheMeProcessorLogGroup
+              awslogs-region: !Ref "AWS::Region"
+          PortMappings:
+            -
+              ContainerPort: "8082"
+              HostPort: "0"
+              Protocol: "tcp"
+
+  MustacheMeProcessorService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      Cluster: !ImportValue EcsClusterName
+      DesiredCount: "1"
+      Role: !ImportValue ECSServiceRoleArn
+      TaskDefinition: !Ref MustacheMeProcessorTaskDefinition
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      LoadBalancers:
+        -
+          ContainerName: "MustacheMeProcessor"
+          ContainerPort: "8082"
+          TargetGroupArn: !Ref TargetGroupArn

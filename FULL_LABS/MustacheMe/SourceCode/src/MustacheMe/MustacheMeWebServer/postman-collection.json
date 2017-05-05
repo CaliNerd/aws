@@ -1,0 +1,35 @@
+{
+	"id": "7739bb54-b5af-9e9a-946a-8cf37a65caa9",
+	"name": "MustacheMe",
+	"description": "Collection for the MustacheMeWebServer microservice",
+	"order": [
+		"08bdeab6-7d1f-9e80-fac1-cf0a559af259"
+	],
+	"folders": [],
+	"timestamp": 1475853871805,
+	"owner": 0,
+	"public": false,
+	"published": false,
+	"requests": [
+		{
+			"id": "08bdeab6-7d1f-9e80-fac1-cf0a559af259",
+			"headers": "",
+			"url": "{{TEST_URL}}",
+			"pathVariables": {},
+			"preRequestScript": null,
+			"method": "GET",
+			"collectionId": "7739bb54-b5af-9e9a-946a-8cf37a65caa9",
+			"data": null,
+			"dataMode": "params",
+			"name": "MustacheMeWebServer",
+			"description": "Test of the MustacheMeWebServer microservice",
+			"descriptionFormat": "html",
+			"time": 1475853987555,
+			"version": 2,
+			"responses": [],
+			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;\n\ntests[\"Body matches string\"] = responseBody.has(\"Simple Mustache Service\");",
+			"currentHelper": "normal",
+			"helperAttributes": {}
+		}
+	]
+}
