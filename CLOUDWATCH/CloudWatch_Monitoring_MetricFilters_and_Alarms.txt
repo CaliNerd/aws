@@ -75,3 +75,5 @@
     CloudWatch Alarm when user logs into AWS Console WITHOUT MFA:
     { $.userIdentity.sessionContext.attributes.mfaAuthenticated != "true" && $.userIdentity.invokedBy = "signin.amazonaws.com" }
     CloudWatch Alarm Count = 1
+
+#
