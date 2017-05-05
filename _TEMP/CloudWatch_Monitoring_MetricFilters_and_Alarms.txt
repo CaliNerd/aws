@@ -1,0 +1,79 @@
+
+    Enable CloudWatch Alarm for AWS Config Changes:
+    Metric Filter:      { ($.eventSource = config.amazonaws.com) && (($.eventName = StopConfigurationRecorder)||($.eventName = DeleteDeliveryChannel)||($.eventName = PutDeliveryChannel)||($.eventName = PutConfigurationRecorder)) }
+    CloudWatch Alarm Count:  1
+
+
+    Enable CloudWatch Alarms for AWS Authorization Failures:
+    Metric Filter:      { ($.errorCode = "*UnauthorizedOperation") || ($.errorCode = "AccessDenied*") }
+    CloudWatch Alarm Count = 3
+
+
+    Enable CloudWatch Alarm for AWS KMS customer master keys (CMKs) Changes:
+    Metric Filter:      { ($.eventSource = kms.amazonaws.com) && (($.eventName = DisableKey) || ($.eventName = ScheduleKeyDeletion) || ($.eventName = CreateAlias) || ($.eventName = CreateGrant) || ($.eventName = CreateKey) || ($.eventName = DeleteAlias)) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarms for AWS CloudTrail Changes:
+    Metric Filter:      { ($.eventName = CreateTrail) || ($.eventName = UpdateTrail) || ($.eventName = DeleteTrail) || ($.eventName = StartLogging) || ($.eventName = StopLogging) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarms for AWS Console Sign-in Failures:
+    Metric Filter:      { ($.eventName = ConsoleLogin) && ($.errorMessage = "Failed authentication") }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS EC2 Instance Changes:
+    Metric Filter:      { ($.eventName = RunInstances) || ($.eventName = RebootInstances) || ($.eventName = StartInstances) || ($.eventName = StopInstances) || ($.eventName = TerminateInstances) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS EC2 Large Instance Changes:
+    Metric Filter:      { ($.eventName = RunInstances) && (($.requestParameters.instanceType = *.8xlarge) || ($.requestParameters.instanceType = *.4xlarge)) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS IAM Policy Changes:
+    Metric Filter:      { ($.eventName=DeleteGroupPolicy) || ($.eventName=DeleteRolePolicy) || ($.eventName=DeleteUserPolicy) || ($.eventName=PutGroupPolicy) || ($.eventName=PutRolePolicy) || ($.eventName=PutUserPolicy) || ($.eventName=CreatePolicy) || ($.eventName=DeletePolicy) || ($.eventName=CreatePolicyVersion) || ($.eventName=DeletePolicyVersion) || ($.eventName=AttachRolePolicy) || ($.eventName=DetachRolePolicy) || ($.eventName=AttachUserPolicy) || ($.eventName=DetachUserPolicy) || ($.eventName=AttachGroupPolicy) || ($.eventName=DetachGroupPolicy) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS Customer/Internet Gateway Changes:
+    Metric Filter:      { ($.eventName = CreateCustomerGateway) || ($.eventName = DeleteCustomerGateway) || ($.eventName = AttachInternetGateway) || ($.eventName = CreateInternetGateway) || ($.eventName = DeleteInternetGateway) || ($.eventName = DetachInternetGateway) }
+    CloudWatch Alarm Count = 1
+
+    Enable CloudWatch Alarm for AWS Network ACL Changes:
+    Metric Filter:      { ($.eventName = CreateNetworkAcl) || ($.eventName = CreateNetworkAclEntry) || ($.eventName = DeleteNetworkAcl) || ($.eventName = DeleteNetworkAclEntry) || ($.eventName = ReplaceNetworkAclEntry) || ($.eventName = ReplaceNetworkAclAssociation) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for Root Account Usage:
+    Metric Filter:      {Filter Pattern{ box: { $.userIdentity.type = \"Root\" && $.userIdentity.invokedBy NOT EXISTS && $.eventType != \"AwsServiceEvent\" }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS Route Tables Changes:
+    Metric Filter:      { ($.eventName = CreateRoute) || ($.eventName = CreateRouteTable) || ($.eventName = ReplaceRoute) || ($.eventName = ReplaceRouteTableAssociation) || ($.eventName = DeleteRouteTable) || ($.eventName = DeleteRoute) || ($.eventName = DisassociateRouteTable) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS S3 Bucket Changes:
+    Metric Filter:      { ($.eventSource = s3.amazonaws.com) && (($.eventName = PutBucketAcl) || ($.eventName = PutBucketPolicy) || ($.eventName = PutBucketCors) || ($.eventName = PutBucketLifecycle) || ($.eventName = PutBucketReplication) || ($.eventName = DeleteBucketPolicy) || ($.eventName = DeleteBucketCors) || ($.eventName = DeleteBucketLifecycle) || ($.eventName = DeleteBucketReplication)) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS Security Group Changes:
+    Metric Filter:      { ($.eventName = AuthorizeSecurityGroupIngress) || ($.eventName = AuthorizeSecurityGroupEgress) || ($.eventName = RevokeSecurityGroupIngress) || ($.eventName = RevokeSecurityGroupEgress) || ($.eventName = CreateSecurityGroup) || ($.eventName = DeleteSecurityGroup) }
+    CloudWatch Alarm Count = 1
+
+
+    Enable CloudWatch Alarm for AWS VPC Changes:
+    Metric Filter:      { ($.eventName = CreateVpc) || ($.eventName = DeleteVpc) || ($.eventName = ModifyVpcAttribute) || ($.eventName = AcceptVpcPeeringConnection) || ($.eventName = CreateVpcPeeringConnection) || ($.eventName = DeleteVpcPeeringConnection) || ($.eventName = RejectVpcPeeringConnection) || ($.eventName = AttachClassicLinkVpc) || ($.eventName = DetachClassicLinkVpc) || ($.eventName = DisableVpcClassicLink) || ($.eventName = EnableVpcClassicLink) }
+    CloudWatch Alarm Count = 1
+
+    CloudWatch Alarm when user logs into AWS Console WITHOUT MFA:
+    { $.userIdentity.sessionContext.attributes.mfaAuthenticated != "true" && $.userIdentity.invokedBy = "signin.amazonaws.com" }
+    CloudWatch Alarm Count = 1
+
+#
