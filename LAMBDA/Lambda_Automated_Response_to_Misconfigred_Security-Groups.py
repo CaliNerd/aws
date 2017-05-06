@@ -8,12 +8,49 @@
 # Author: jslevine@
 # Date: 2016-09-05
 #
+# Author: @infosecuritynet
+# Date: 2016-05-05
+#
 # This file contains an AWS Lambda handler which responds to AWS API calls that modify the ingress
 # permissions of security groups to see if the permissions now differ from the required permissions
 # as specificed in the REQUIRED_PERMISSIONS variable below.
 #
 # Note: The permissions are not remediated within this function because doing so could possibly
 # trigger a recursion issue with this Lambda function triggering itself.
+#
+###################
+# 
+# TRIGGER SETUP:  
+# 1.) SETUP NEW CLOUDWATCH RULE
+# 2.) EVENT PATTERN
+# 3.) BUILD CUSTOM EVENT PATTERN (WITH THE FOLLOWING):
+# {
+#  "detail-type": [
+#    "AWS API Call via CloudTrail"
+#  ],
+#  "detail": {
+#    "eventSource": [
+#      "ec2.amazonaws.com"
+#    ],
+#    "eventName": [
+#     "AuthorizeSecurityGroupIngress",
+#     "RevokeSecurityGroupIngress"
+#    ],
+#    "requestParameters": {
+#      "groupId": [
+#        "sg-*"
+#     ]
+#    }
+#  }
+#}
+# 4.) TARGETS
+# 5.) THIS LAMBDA FUNCTION
+# 6.) DEFAULT
+# 7.) CONFIGURE INPUT: 'Matched event'
+# 8.) configure Event (name, description)
+# 9.) State: ENABLED
+#
+###################
 
 import boto3
 import botocore
