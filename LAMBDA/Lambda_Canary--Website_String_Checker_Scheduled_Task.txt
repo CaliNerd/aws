@@ -1,0 +1,22 @@
+###################################################################
+#
+#	### Website Content Checker ###
+#	    * Checks for specific text on a webpage
+#		* Reports 'success' or 'failure' string to CloudWatch Logs 
+#		  (for you to trigger other shit)
+#
+###################################################################
+
+1.)	Setup Lambda Function using blueprint: lambda-canary
+2.)	Select ‘Configure Triggers’:
+a.	Name it: ScheduledEvent
+b.	Rate (1 minute)
+3.)	Function Name: CheckWebsiteDetails
+4.)	Default runtime (python 2.7)
+5.)	Default code inline
+6.)	Variables:
+a.	Site: 	http://wwwMyWebSite.com
+b.	Expected:	<Text to search for>
+7.)	Role: existing (Lambda)
+8.)	Memory:	1024MB
+9.)	Timeout:	 5 minutes
