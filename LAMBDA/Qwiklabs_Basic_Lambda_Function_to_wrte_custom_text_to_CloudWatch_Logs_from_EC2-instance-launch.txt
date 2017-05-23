@@ -1,0 +1,33 @@
+#######################################################
+#
+#	Use this code in a Lambda function to 
+#	 add a custom string to CloudWatch Event Logs.
+#	You can setup a watcher and use this as a trigger
+#
+#######################################################
+
+1.) Lambda
+2.)	 Blank Function
+3.) Function Name: LambdaFunction
+4.) Node.js 4.3
+5.) Code:
+
+exports.handler = function(event, context)
+{
+console.log("LambdaFunction()");
+console.log("Here's the event:\n:"+JSON.stringify(event, null, 4));
+context.succeed("Ready!");
+};
+
+6.) CloudWatch Events
+7.)	 Create Rule
+8.) Service: EC2
+9.) State: running
+10.) Add Target
+11.) Choose 'LambdaFunction' (created in step 3 above)
+12.) Next
+13.) Name: InstanceCheck
+14.) Create!
+
+# Now whenever an EC2 node goes to 'Running' state, your Lambda function will write a custom event to CloudWatch Event Logs that says 'Here's the event'.
+## You can use this to trigger other things.

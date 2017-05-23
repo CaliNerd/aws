@@ -19,7 +19,7 @@
     CloudWatch Alarm Count = 1
 
 
-    Enable CloudWatch Alarms for AWS Console Sign-in Failures:
+    Enable CloudWatch Alarms for AWS Console Sign-in Failures: 
     Metric Filter:      { ($.eventName = ConsoleLogin) && ($.errorMessage = "Failed authentication") }
     CloudWatch Alarm Count = 1
 
