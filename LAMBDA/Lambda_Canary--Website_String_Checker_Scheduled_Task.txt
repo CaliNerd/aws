@@ -7,6 +7,7 @@
 #
 ###################################################################
 
+### LAMBDA SETUP ###
 1.)	Setup Lambda Function using blueprint: lambda-canary
 2.)	Select ‘Configure Triggers’:
 a.	Name it: ScheduledEvent
@@ -20,3 +21,26 @@ b.	Expected:	<Text to search for>
 7.)	Role: existing (Lambda)
 8.)	Memory:	1024MB
 9.)	Timeout:	 5 minutes
+
+### SNS ###
+10.) Create SNS Topic
+11.) Create SNS Subscription (from this Topic)
+12.) Send subscription to email or SMS me
+
+### CloudWatch ###
+13.) CloudWatch Alarms
+14.) Create Alarm
+15.) Lambda Metrics
+16.) Metric Name (check the box for 'Errors')
+17.) Next
+18.) Alarm Threshold: Name/Description
+19.) Whenever error is >= 1
+20.) Statistic: SUM !
+21.) 1 minute
+22.) Actions: + Notifications (send to newly created SNS Topic)
+23.) Done!
+
+### Test it! ###
+24.) Run the Lambda function (test and choose "Scheduled Event" as test type)
+25.) View Lambda function 'Monitor' tab (and see success/failures in CloudWatch Logs)
+26.) Confirm email receipt if error
