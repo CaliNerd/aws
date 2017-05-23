@@ -4,6 +4,9 @@
 #	 add a custom string to CloudWatch Event Logs.
 #	You can setup a watcher and use this as a trigger
 #
+#	Change the below code to write own text to logs
+#	 which can be used to trigger anything
+#
 #######################################################
 
 1.) Lambda
