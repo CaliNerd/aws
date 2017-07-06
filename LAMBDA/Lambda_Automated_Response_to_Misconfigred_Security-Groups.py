@@ -1,12 +1,8 @@
-#
-# This file made available under CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+###################
 #
 # Description: Checks that all security groups block access to the specified ports.
 #
 # awscwevents_lambda_security_group.py
-#
-# Author: jslevine@
-# Date: 2016-09-05
 #
 # Author: @infosecuritynet
 # Date: 2016-05-05
